@@ -56,8 +56,11 @@ public class DevelopersVisitorCommit implements CommitVisitor {
 				 * it will be a predefined value for the next computation
 				 */
 				// check if filename exist or not
-				if(splitFolder[0].equals("lucene") && filename.substring(filename.length() - 5).equals(".java"))
+				if(splitFolder[0].equals("lucene") && splitFolder[1].equals("core") && 
+						splitFolder[2].equals("src") && splitFolder[3].equals("java") && 
+						filename.substring(filename.length() - 5).equals(".java"))
 				{
+					System.out.println(commitDatetime + " " + fullpath);
 					HashMap<String, Integer> fileContributorValue = new HashMap<String, Integer>();
 					if(fileContributor.containsKey(fullpath))
 					{
@@ -83,15 +86,7 @@ public class DevelopersVisitorCommit implements CommitVisitor {
 						fileContributor.put(fullpath, fileContributorValue);
 					}
 				}
-				/*String clisting = "(";
-				for(HashMap.Entry<String, Integer> cd: fileContributor.get(fullpath).entrySet())
-				{
-					clisting = clisting + cd.getKey() + "," + cd.getValue() + " ";
-				}
-				clisting = clisting + ")";
-				writer.write(commitDatetime + "," + filename + "," + currentCommitter + ","+clisting);
-				*/
-			}					
+			}	
 		}
 	}
 }

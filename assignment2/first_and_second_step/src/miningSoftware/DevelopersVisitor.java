@@ -52,11 +52,13 @@ public class DevelopersVisitor implements CommitVisitor {
 				{
 					folder = folder + splitFolder[i] + "/";
 				}
-				// determine file extension, we are only interested to inspect .java files in directory lucene/ (for LUCENE project)
-				
-				if(splitFolder[0].equals("lucene") && filename.substring(filename.length() - 5).equals(".java"))
+				// determine file extension, we are only interested to inspect .java files in directory lucene/core (for LUCENE project)				
+				if(splitFolder[0].equals("lucene") && splitFolder[1].equals("core") && 
+						splitFolder[2].equals("src") && splitFolder[3].equals("java") && 
+						filename.substring(filename.length() - 5).equals(".java"))
 				{
 					// blame part
+					System.out.println(list.getFileName());
 					List<BlamedLine> blame = repo.getScm().blame(list.getNewPath(), commit.getHash(), true);
 					HashMap<String, Integer> listCommitterPerFile = new HashMap<String, Integer>();
 					
@@ -74,6 +76,7 @@ public class DevelopersVisitor implements CommitVisitor {
 						}
 					}
 					// total line contributor per file
+					int totalLine = 0;
 					int totalLineContributor = listCommitterPerFile.size();
 					int minorLineContributor = 0;
 					int majorLineContributor = 0;
@@ -81,7 +84,6 @@ public class DevelopersVisitor implements CommitVisitor {
 					String maxOwnershipName = "";
 					double ownershipCurrentCommitter = 0;
 					// compute total line contribution
-					int totalLine = 0;
 					for(HashMap.Entry<String, Integer> entry: listCommitterPerFile.entrySet())
 					{
 						totalLine += entry.getValue();
@@ -104,7 +106,9 @@ public class DevelopersVisitor implements CommitVisitor {
 					double authorMaxOwnership = 0;
 					if( ownershipCurrentCommitter == maxOwnership) authorMaxOwnership = 1;
 					
+					// data structure for the member of each <commit,file> pair
 					HashMap<String, Object> x = new HashMap();
+					// data structure for LineContributor
 					double[] arrayLineContributor = new double[6];
 					arrayLineContributor[0] = totalLineContributor;
 					arrayLineContributor[1] = minorLineContributor;
@@ -113,13 +117,24 @@ public class DevelopersVisitor implements CommitVisitor {
 					arrayLineContributor[4] = (double) Math.round(ownershipCurrentCommitter * 100)/100;
 					arrayLineContributor[5] = authorMaxOwnership;	
 					
+					// data structure for commit contributor (will be filled later on)
+					double[] arrayCommitContributor = new double[6];
+					arrayCommitContributor[0] = 0;
+					arrayCommitContributor[1] = 0;
+					arrayCommitContributor[2] = 0;
+					arrayCommitContributor[3] = 0;
+					arrayCommitContributor[4] = 0;
+					arrayCommitContributor[5] = 0;						
+					
+					// main data structure used for the final result
 					x.put("commit", hashCode);
 					x.put("fullpath", fullpath);
 					x.put("filename", filename);
 					x.put("folder", folder);
 					x.put("committer", currentCommitter);
 					x.put("timestamp", commitDatetime);
-					x.put("list", arrayLineContributor);
+					x.put("listLineContributor", arrayLineContributor);
+					x.put("listCommitContributor", arrayCommitContributor);
 					
 					lineResult.put(hashCode+","+fullpath, x);
 					
