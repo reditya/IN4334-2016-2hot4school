@@ -1,3 +1,4 @@
+commit_id,filename,folder,committer,timestamp,line_contributors_total,line_contributors_minor,line_contributors_major,line_contributors_ownership,line_contributors_author,line_contributors_author_owner,commit_con_total,commit_con_minor,commit_con_major,commit_con_own,commit_con_author,commit_cont_aut_owner
 7c962031d5ec5328291d2bf2106c748b38cedd71,SortedDocValuesWriter.java,lucene/core/src/java/org/apache/lucene/index/,Michael McCandless,2013-01-27 20:29:01,3.0,1.0,2.0,0.83,0.83,true,0.0,0.0,0.0,0.0,0.0,false
 eda0a6b0cf6ac6682210bef92095e0e6e0eae0fb,BufferedDeletesStream.java,lucene/core/src/java/org/apache/lucene/index/,Shai Erera,2013-10-03 22:48:01,8.0,5.0,3.0,0.67,0.16,false,1.0,0.0,1.0,1.0,1.0,true
 2dcf80718c21548c85aa3e1c2283721242b11d04,PerFieldDocValuesFormat.java,lucene/core/src/java/org/apache/lucene/codecs/perfield/,Robert Muir,2013-02-11 03:54:53,2.0,0.0,2.0,0.91,0.91,true,2.0,0.0,2.0,0.75,0.25,false
