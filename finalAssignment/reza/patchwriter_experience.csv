@@ -1,4 +1,4 @@
-ID|BRANCH|PROJECT|createdOn|s_email|status|num|accepted
+ID|BRANCH|PROJECT|createdOn|s_email|status|SUBMITTED_PATCHES|ACCEPTED_PATCHES
 Iab6b2c63c183f1f01d1f9a6a2ca117a9db8db27d|master|openstack/cinder|1476711599|pawnesh.kumar@nectechnologies.in|NEW|10|2
 I8dd61f6a281f9e8ecfafc4bf2a12efa51ae2956d|master|openstack/cinder|1473092061|helen.walsh@emc.com|NEW|36|34
 I83e8ac8dcf9e84b37847d6eb09065d55e843f82e|stable/newton|openstack/cinder|1475176428|winston.d@gmail.com|NEW|23|14

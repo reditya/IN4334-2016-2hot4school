@@ -4,6 +4,11 @@ st$group <- as.factor(cut(st$loc,quantile(st$loc,(0:4)/4), include.lowest=TRUE, 
 
 #Kruskal-Wallis test
 kruskal.test(time~group, data=st)
+
+haha = st[st$trans == "r+"]
+
+cor.test(st$loc, st$time, method="spearm", alternative="greater")
+
 qchisq(0.950, 3)
 
 pairwise.wilcox.test(st$time, st$group, p.adj="bonferroni", exact=F)
