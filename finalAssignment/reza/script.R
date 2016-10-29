@@ -35,8 +35,8 @@ filter_alldata$MINUTES <- as.numeric(filter_alldata$TIMEINSECOND/60)
 filter_alldata = filter_alldata[filter_alldata$MINUTES < quantile(filter_alldata$MINUTES, 0.95),]
 
 # reviewer lookup
-least_reviewer <- read.csv("leastCoreReviewer.csv", header = TRUE, sep=',')
-#least_reviewer = list_reviewer[list_reviewer$MAX_R_ACTIVITY < quantile(list_reviewer$MAX_R_ACTIVITY,0.05),]
+least_reviewer <- read.csv("totalReviewerActivity.csv", header = TRUE, sep='|')
+least_reviewer = list_reviewer[list_reviewer$MAX_R_ACTIVITY < quantile(list_reviewer$MAX_R_ACTIVITY,0.05),]
 filter_alldata = filter_alldata[!(filter_alldata$R1_EMAIL %in% least_reviewer$r_email | filter_alldata$R2_EMAIL %in% least_reviewer$r_email),]
 
 # filter review that's too fast, because it was reviewed by themself
@@ -55,16 +55,22 @@ cfilter <- merge(x = conflict, y = filter_alldata, by = c("ID", "BRANCH", "PROJE
 cfilter = cfilter[!is.na(cfilter$POSITIVITY),]
 
 cfilter = cfilter[,c("ID","BRANCH","PROJECT","CONFLICT","POSITIVITY","MINUTES")]
+cfilter$POS <- ifelse(cfilter$POSITIVITY == 1,"r+","r-")
+cfilter$POS <- as.factor(cfilter$POS)
 
-# conflict yes
-cf_pos <- cfilter[ which(grepl("Y",cfilter$CONFLICT)),]
-cf_pos$POS <- ifelse(cf_pos$POSITIVITY == 1,"r+","r-")
-cf_pos$POS <- as.factor(cf_pos$POS)
-  
-# conflict no
-cf_neg <- cfilter[ which(!grepl("Y",cfilter$CONFLICT)),]
-cf_neg$POS <- ifelse(cf_neg$POSITIVITY == 1,"r+","r-")
-cf_neg$POS <- as.factor(cf_neg$POS)
+# conflict yes, review positive
+cfilter_cy_rp <- cfilter[ which(grepl("Y",cfilter$CONFLICT) & cfilter$POS == "r+"),]
+# conflict yes, review negative
+cfilter_cy_rn <- cfilter[ which(grepl("Y",cfilter$CONFLICT) & cfilter$POS == "r-"),]
+# conflict no, review positive
+cfilter_cn_rp <- cfilter[ which(!grepl("Y",cfilter$CONFLICT) & cfilter$POS == "r+"),]
+# conflict no, review negative
+cfilter_cn_rn <- cfilter[ which(!grepl("Y",cfilter$CONFLICT) & cfilter$POS == "r-"),]
+
+# boxplot
+boxplot(cfilter_cy_rp$MINUTES, cfilter_cy_rn, cfilter_cn_rp, cfilter_cn_rn, 
+          col=c("red","green","blue","yellow"), 
+          names=c("c+|r+", "c+|r-","c-|r+","c-|r-"))
 
 
 
