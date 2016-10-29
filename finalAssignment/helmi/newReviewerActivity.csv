@@ -1,4 +1,4 @@
-ID|BRANCH|PROJECT|R1_EMAIL|R1_ACTIVITY|R2_EMAIL|R2_ACTIVITY
+ID|BRANCH|PROJECT|R1_EMAIL_ACTIVITY|R1_ACTIVITY|R2_EMAIL_ACTIVITY|R2_ACTIVITY
 I3f88b376c6d5b2682d421d3093e1f8decd263f5e|master|openstack/nova|berrange@redhat.com|2|klmitch@mit.edu|1
 Ie50bc0bff32b7f97ac317ccc2521bbea52d59ca3|master|openstack/neutron|mark@mcclain.xyz|3|amotoki@gmail.com|1
 Ib4e2136a0d600cb1ab692c123ee9134b404e90f8|master|openstack/neutron|mark@mcclain.xyz|6||
