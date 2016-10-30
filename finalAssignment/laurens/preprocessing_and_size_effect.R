@@ -45,3 +45,80 @@ filter_alldata = filter_alldata[filter_alldata$submitter_email != filter_alldata
 # on unix timestamp : 1420070400 < createdon < 1467331199
 filter_alldata = filter_alldata[filter_alldata$CREATEDON > 1420070400 & filter_alldata$CREATEDON < 1467331199, ]
 
+#####################################
+# Effect of Patch Size on Time
+#####################################
+
+# nearly equal number of observations in each group using quantile function
+
+filter_alldata$group <- as.factor(cut(filter_alldata$SIZE,quantile(filter_alldata$SIZE,(0:4)/4), include.lowest=TRUE, labels=LETTERS[1:4]))
+
+#Kruskal-Wallis test
+kruskal.test(TIMEINSECOND~group, data=filter_alldata)
+
+#Man-Whitney with Bonferroni correction
+pairwise.wilcox.test(filter_alldata$TIMEINSECOND, filter_alldata$group, p.adj="bonferroni", exact=F)
+
+patchA <- filter_alldata[which(filter_alldata$group=='A'),]
+patchB <- filter_alldata[which(filter_alldata$group=='B'),]
+patchC <- filter_alldata[which(filter_alldata$group=='C'),]
+patchD <- filter_alldata[which(filter_alldata$group=='D'),]
+boxplot(patchA$MINUTES, patchB$MINUTES, patchC$MINUTES, patchD$MINUTES, col=c("red","green", "blue"), names=c("A", "B", "C", "D"))
+
+# Mean and Median values for each group
+summary(patchA)
+summary(patchB)
+summary(patchC)
+summary(patchD)
+
+# Positivity for each group:
+pos_A = nrow(patchA[which(patchA$POSITIVITY==1),])/nrow(patchA)
+pos_B = nrow(patchB[which(patchB$POSITIVITY==1),])/nrow(patchB)
+pos_C = nrow(patchC[which(patchC$POSITIVITY==1),])/nrow(patchC)
+pos_D = nrow(patchD[which(patchD$POSITIVITY==1),])/nrow(patchD)
+
+# Split data into 4 bins for two groups: POSTIVITY=1 and POSTIVITY=-1
+accepted <- filter_alldata[ which(filter_alldata$POSITIVITY==1), ]
+rejected <- filter_alldata[ which(filter_alldata$POSITIVITY==-1), ]
+
+accepted$group <- as.factor(cut(accepted$SIZE,quantile(accepted$SIZE,(0:4)/4), include.lowest=TRUE, labels=LETTERS[1:4]))
+rejected$group <- as.factor(cut(rejected$SIZE,quantile(rejected$SIZE,(0:4)/4), include.lowest=TRUE, labels=LETTERS[1:4]))
+
+# KW for accepted
+kruskal.test(TIMEINSECOND~group, data=accepted)
+
+#post-hoc MWW test for accepted
+pairwise.wilcox.test(accepted$TIMEINSECOND, accepted$group, p.adj="bonferroni", exact=F)
+
+# KW for rejected
+kruskal.test(TIMEINSECOND~group, data=rejected)
+
+#post-hoc MWW test for rejected
+pairwise.wilcox.test(rejected$TIMEINSECOND, rejected$group, p.adj="bonferroni", exact=F)
+
+#####################################
+# Patch Size on Number of Revisions
+#####################################
+
+#KW test for # of revisions
+kruskal.test(REVISIONS~group, data=filter_alldata)
+
+#Result: there is stat sign difference somewhere
+
+#MWW
+pairwise.wilcox.test(filter_alldata$REVISIONS, filter_alldata$group, p.adj="bonferroni", exact=F)
+
+#Result: effect of pach size on the rounds of revisions are stat different for all groups.
+
+#correlation : size vs time
+#spearman
+cor.s = cor.test(filter_alldata$SIZE, filter_alldata$TIMEINSECOND, method="spearman")
+cor.s
+
+# Correlation of accepted/rejected patches (size with time) 
+
+# Accepted patches
+cor.a = cor.test(accepted$SIZE, accepted$TIMEINSECOND, method="spearman")
+
+# Rejected patches
+cor.r = cor.test(rejected$SIZE, rejected$TIMEINSECOND, method="spearman")
