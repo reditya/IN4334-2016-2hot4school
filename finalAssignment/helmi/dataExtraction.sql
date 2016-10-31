@@ -69,10 +69,10 @@ as(
 	select
 		patch,
 		max(case when r_rank = 1 then r_email end) as r1_email,
-		/*max(case when r_rank = 1 then r_grantedon end) as r1_grantedon,*/
+		max(case when r_rank = 1 then r_grantedon end) as r1_grantedon,
 		max(case when r_rank = 1 then r_activity end) as r1_activity,
 		max(case when r_rank = 2 then r_email end) as r2_email,
-		/*max(case when r_rank = 2 then r_grantedon end) as r2_grantedon,*/
+		max(case when r_rank = 2 then r_grantedon end) as r2_grantedon,
 		max(case when r_rank = 2 then r_activity end) as r2_activity
 	from (
 		select
@@ -86,8 +86,18 @@ as(
 				id || '|' || branch || '|' || project as patch,
 				r_email,
 				r_grantedon
-			from
-				approval
+			from (
+				select
+					a.*,
+					b.positivity
+				from
+					approval a
+				left join
+					time_positivity b
+					on a.id || '|' || a.branch || '|' || a.project = b.patch
+				where
+					b.positivity is not null
+			)
 			where
 				lower(r_type) like 'code-review'
 				and (r_value > 1 or r_value < -1)			
@@ -98,10 +108,30 @@ as(
 				a.r_email,
 				a.r_grantedon,
 				count(distinct(b.id || '|' || b.branch || '|' || b.project)) as r_activity
-			from
-				approval a
-			left join
-				approval b
+			from (
+				select
+					a.*,
+					b.positivity
+				from
+					approval a
+				left join
+					time_positivity b
+					on a.id || '|' || a.branch || '|' || a.project = b.patch
+				where
+					b.positivity is not null
+			) a
+			left join (
+				select
+					a.*,
+					b.positivity
+				from
+					approval a
+				left join
+					time_positivity b
+					on a.id || '|' || a.branch || '|' || a.project = b.patch
+				where
+					b.positivity is not null
+			) b
 				on 
 					b.r_email = a.r_email
 					and b.r_grantedon < a.r_grantedon
@@ -109,6 +139,7 @@ as(
 				lower(a.r_type) like 'code-review'
 				and (a.r_value > 1 or a.r_value < -1)
 				and lower(b.r_type) like 'code-review'
+				and (b.r_value > 1 or b.r_value < -1)
 			group by
 				a.id,
 				a.branch,
