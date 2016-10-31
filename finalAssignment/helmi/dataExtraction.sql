@@ -57,109 +57,6 @@ where
 commit;
 
 
---------------------------------------------------------------------------------------------------------------------------------
---- Data extraction
---------------------------------------------------------------------------------------------------------------------------------
-
-
--- core-reviewer activity
-create table 
-	reviewer_activity 
-as(
-	select
-		patch,
-		max(case when r_rank = 1 then r_email end) as r1_email,
-		max(case when r_rank = 1 then r_grantedon end) as r1_grantedon,
-		max(case when r_rank = 1 then r_activity end) as r1_activity,
-		max(case when r_rank = 2 then r_email end) as r2_email,
-		max(case when r_rank = 2 then r_grantedon end) as r2_grantedon,
-		max(case when r_rank = 2 then r_activity end) as r2_activity
-	from (
-		select
-			a.patch,
-			a.r_email,
-			a.r_grantedon,
-			coalesce(b.r_activity, 0) r_activity,
-			rank() over (partition by a.patch order by a.r_grantedon, b.r_activity) as r_rank
-		from (
-			select													-- all review
-				id || '|' || branch || '|' || project as patch,
-				r_email,
-				r_grantedon
-			from (
-				select
-					a.*,
-					b.positivity
-				from
-					approval a
-				left join
-					time_positivity b
-					on a.id || '|' || a.branch || '|' || a.project = b.patch
-				where
-					b.positivity is not null
-			)
-			where
-				lower(r_type) like 'code-review'
-				and (r_value > 1 or r_value < -1)			
-		) a
-		left join (
-			select													-- all reviewer activity per review
-				a.id || '|' || a.branch || '|' || a.project as patch,
-				a.r_email,
-				a.r_grantedon,
-				count(distinct(b.id || '|' || b.branch || '|' || b.project)) as r_activity
-			from (
-				select
-					a.*,
-					b.positivity
-				from
-					approval a
-				left join
-					time_positivity b
-					on a.id || '|' || a.branch || '|' || a.project = b.patch
-				where
-					b.positivity is not null
-			) a
-			left join (
-				select
-					a.*,
-					b.positivity
-				from
-					approval a
-				left join
-					time_positivity b
-					on a.id || '|' || a.branch || '|' || a.project = b.patch
-				where
-					b.positivity is not null
-			) b
-				on 
-					b.r_email = a.r_email
-					and b.r_grantedon < a.r_grantedon
-			where
-				lower(a.r_type) like 'code-review'
-				and (a.r_value > 1 or a.r_value < -1)
-				and lower(b.r_type) like 'code-review'
-				and (b.r_value > 1 or b.r_value < -1)
-			group by
-				a.id,
-				a.branch,
-				a.project,
-				a.r_email,
-				a.r_grantedon
-		) b
-			on a.patch = b.patch
-			and a.r_email = b.r_email
-			and a.r_grantedon = b.r_grantedon
-		order by
-			a.r_grantedon
-	)
-	group by
-		patch
-	/*order by
-		patch*/
-);
-
-
 -- time and positivity
 create table 
 	time_positivity
@@ -314,6 +211,130 @@ as(
 	/*order by
 		b.createdon,
 		b.r_grantedon*/
+);
+
+
+-- Load the data to pipe delimited file, then change the patch header to ID, BRANCH, and PROJECT
+
+
+
+-- Create table filter_alldata
+CREATE TABLE HR.filter_alldata (
+	id						VARCHAR2(100),
+	branch					VARCHAR2(100),
+	project					VARCHAR2(100),
+	positivity              INTEGER
+);
+
+-- Create index for table filter_alldata
+CREATE INDEX identifier_2 ON filter_alldata (id, branch, project); 
+
+
+-- Create table filter_alldata
+CREATE TABLE HR.filter_alldata_2 as (
+	select
+		id || '|' || branch || '|' || project as patch,
+		positivity
+	from
+		filter_alldata
+);
+
+
+-- core-reviewer activity
+create table 
+	reviewer_activity 
+as(
+	select
+		patch,
+		max(case when r_rank = 1 then r_email end) as r1_email,
+		max(case when r_rank = 1 then r_grantedon end) as r1_grantedon,
+		max(case when r_rank = 1 then r_activity end) as r1_activity,
+		max(case when r_rank = 2 then r_email end) as r2_email,
+		max(case when r_rank = 2 then r_grantedon end) as r2_grantedon,
+		max(case when r_rank = 2 then r_activity end) as r2_activity
+	from (
+		select
+			a.patch,
+			a.r_email,
+			a.r_grantedon,
+			coalesce(b.r_activity, 0) r_activity,
+			rank() over (partition by a.patch order by a.r_grantedon, b.r_activity) as r_rank
+		from (
+			select													-- all review
+				id || '|' || branch || '|' || project as patch,
+				r_email,
+				r_grantedon
+			from (
+				select
+					a.*,
+					b.positivity
+				from
+					approval a
+				left join
+					filter_alldata_2 b
+					on a.id || '|' || a.branch || '|' || a.project = b.patch
+				where
+					b.positivity is not null
+			)
+			where
+				lower(r_type) like 'code-review'
+				and (r_value > 1 or r_value < -1)			
+		) a
+		left join (
+			select													-- all reviewer activity per review
+				a.id || '|' || a.branch || '|' || a.project as patch,
+				a.r_email,
+				a.r_grantedon,
+				count(distinct(b.id || '|' || b.branch || '|' || b.project)) as r_activity
+			from (
+				select
+					a.*,
+					b.positivity
+				from
+					approval a
+				left join
+					filter_alldata_2 b
+					on a.id || '|' || a.branch || '|' || a.project = b.patch
+				where
+					b.positivity is not null
+			) a
+			left join (
+				select
+					a.*,
+					b.positivity
+				from
+					approval a
+				left join
+					filter_alldata_2 b
+					on a.id || '|' || a.branch || '|' || a.project = b.patch
+				where
+					b.positivity is not null
+			) b
+				on 
+					b.r_email = a.r_email
+					and b.r_grantedon < a.r_grantedon
+			where
+				lower(a.r_type) like 'code-review'
+				and (a.r_value > 1 or a.r_value < -1)
+				and lower(b.r_type) like 'code-review'
+				and (b.r_value > 1 or b.r_value < -1)
+			group by
+				a.id,
+				a.branch,
+				a.project,
+				a.r_email,
+				a.r_grantedon
+		) b
+			on a.patch = b.patch
+			and a.r_email = b.r_email
+			and a.r_grantedon = b.r_grantedon
+		order by
+			a.r_grantedon
+	)
+	group by
+		patch
+	/*order by
+		patch*/
 );
 
 
