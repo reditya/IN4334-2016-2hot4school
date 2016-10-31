@@ -1,5 +1,3 @@
-setwd("/Users/laurensvandenbercken/Documents/workspace_R/IN4334-2016-2hot4school/finalAssignment/laurens")
-
 time_positivity <- read.csv("time_positivity.csv", header = TRUE, sep='|', stringsAsFactors=FALSE)
 organization <- read.csv("organization.csv", header = TRUE, sep='|', stringsAsFactors=FALSE)
 reviewer_activity <- read.csv("reviewer_activity.csv", header = TRUE, sep='|', stringsAsFactors=FALSE)
@@ -31,6 +29,7 @@ filter_alldata = filter_alldata[!is.na(filter_alldata$submitter_org),]
 
 # slowest patch
 filter_alldata$MINUTES <- as.numeric(filter_alldata$TIMEINSECOND/60)
+filter_alldata$DAYS <- as.numeric(filter_alldata$TIMEINSECOND/60/60/24)
 filter_alldata = filter_alldata[filter_alldata$MINUTES < quantile(filter_alldata$MINUTES, 0.95),]
 
 # reviewer lookup
@@ -122,3 +121,102 @@ cor.a = cor.test(accepted$SIZE, accepted$TIMEINSECOND, method="spearman")
 
 # Rejected patches
 cor.r = cor.test(rejected$SIZE, rejected$TIMEINSECOND, method="spearman")
+
+###########################################
+# Effect of Organization factor on Time
+###########################################
+
+get_top_perc_org <- function(df, perc) {
+  df$perc <- df$freq / sum(df$freq) * 100
+  df <- df[order(-df$perc),]
+  for (i in 1:nrow(df)) {
+    if(sum(df[1:i,]$perc) >= perc) {
+      return(df[1:i,])
+    }
+  }
+}
+
+# Select top 80% submitter organizations
+s_org <- data.frame(table(filter_alldata$submitter_org))
+colnames(s_org) <- c('org','freq')
+# s_org <- get_top_perc_org(s_org, 80)
+s_org <- s_org[order(-s_org$freq),]
+s_org <- s_org[1:2,]
+filter_alldata$submitter_org[!filter_alldata$submitter_org %in% s_org$org] <- "Other"
+
+# Select top 80% reviewer 1 organizations
+R1_org <- data.frame(table(filter_alldata$R1_org))
+colnames(R1_org) <- c('org','freq')
+# R1_org <- get_top_perc_org(R1_org, 80)
+R1_org <- R1_org[order(-R1_org$freq),]
+R1_org <- R1_org[1:2,]
+filter_alldata$R1_org[!filter_alldata$R1_org %in% R1_org$org] <- "Other"
+
+# Select top 80% reviewer 2 organizations
+R2_org <- data.frame(table(filter_alldata$R2_org))
+colnames(R2_org) <- c('org','freq')
+# R2_org <- get_top_perc_org(R2_org, 80)
+R2_org <- R2_org[order(-R2_org$freq),]
+R2_org <- R2_org[1:2,]
+filter_alldata$R2_org[!filter_alldata$R2_org %in% R2_org$org] <- "Other"
+
+# Select top 80% of reviewer 1 and 2 organizations
+R12_org <- data.frame(table(filter_alldata$R1_org, filter_alldata$R2_org))
+colnames(R12_org) <- c('R1_org', 'R2_org','freq')
+# R12_org <- get_top_perc_org(R12_org, 80)
+
+#KW for the whole sample
+kruskal.test(TIMEINSECOND~as.factor(submitter_org), data=filter_alldata)
+kruskal.test(TIMEINSECOND~as.factor(R1_org), data=filter_alldata)
+kruskal.test(TIMEINSECOND~as.factor(R2_org), data=filter_alldata)
+#Result: all stat sig
+
+#MWW for the whole dataset
+
+#submitters
+pairwise.wilcox.test(filter_alldata$TIMEINSECOND, filter_alldata$submitter_org, p.adj="bonferroni", exact=F)
+
+#reviewer 1s
+pairwise.wilcox.test(filter_alldata$TIMEINSECOND, filter_alldata$R1_org, p.adj="bonferroni", exact=F)
+
+#reviewer 2s
+pairwise.wilcox.test(filter_alldata$TIMEINSECOND, filter_alldata$R2_org, p.adj="bonferroni", exact=F)
+
+#KW for accepted
+kruskal.test(TIMEINSECOND~submitter_org, data=accepted)
+kruskal.test(TIMEINSECOND~R1_org, data=accepted)
+kruskal.test(TIMEINSECOND~R2_org, data=accepted)
+
+#KW for rejected
+kruskal.test(TIMEINSECOND~submitter_org, data=rejected)
+kruskal.test(TIMEINSECOND~R1_org, data=rejected)
+kruskal.test(TIMEINSECOND~R2_org, data=rejected) # Not stat sig
+
+# To find out where the difference is do pariwise wilcox
+
+# Select only IBM and Red Hat interactions (R1_org and s_org)
+IBMRH <-filter_alldata[ which(filter_alldata$R1_org %in% c('IBM','Red Hat') & filter_alldata$submitter_org %in% c('IBM','Red Hat')), ]
+
+#KW for IBM-Red Hat data only
+kruskal.test(TIMEINSECOND~as.factor(submitter_org), data=IBMRH)
+kruskal.test(TIMEINSECOND~as.factor(R1_org), data=IBMRH)
+# Stat sig
+summary(IBMRH[which(as.character(IBMRH$submitter_org)=='IBM'), c('DAYS')])
+summary(IBMRH[which(as.character(IBMRH$submitter_org)=='Red Hat'), c('DAYS')])
+
+summary(filter_alldata[which(as.character(filter_alldata$R1_org)==as.character(filter_alldata$R2_org)), c('DAYS')])
+summary(filter_alldata[which(as.character(filter_alldata$R1_org)!=as.character(filter_alldata$R2_org)), c('DAYS')])
+
+#####################################
+# Effect of Organization on Positivity
+#####################################
+pos <- data.frame(table(filter_alldata$R1_EMAIL, filter_alldata$R1_org, filter_alldata$R2_EMAIL, filter_alldata$R2_org, filter_alldata$submitter_org))
+colnames(pos) <- c('R1_email', 'R1_org', 'R2_email', 'R2_org', 'submitter_org', 'freq')
+pos <- pos[pos$freq!=0,]
+pos <- pos[pos$R2_email!='',]
+pos <- pos[order(-pos$freq),]
+pos$pos <- 0
+for (i in 1:nrow(pos)) {
+  pos[i,]$pos <- nrow(filter_alldata[which(filter_alldata$POSITIVITY == 1 & filter_alldata$R1_EMAIL==pos[i,]$R1_email & filter_alldata$R2_EMAIL==pos[i,]$R2_email & filter_alldata$submitter_org==pos[i,]$submitter_org),]) / nrow(filter_alldata[which(filter_alldata$R1_EMAIL==pos[i,]$R1_email & filter_alldata$R2_EMAIL==pos[i,]$R2_email & filter_alldata$submitter_org==pos[i,]$submitter_org),])
+}
+boxplot(pos~R1_org*R2_org*submitter_org, data=pos, xlab="Organization", ylab="Positivity", ylim=c(0.9,1))
