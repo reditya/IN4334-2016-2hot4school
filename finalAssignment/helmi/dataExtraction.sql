@@ -242,7 +242,7 @@ CREATE TABLE HR.filter_alldata_2 as (
 
 -- core-reviewer activity
 create table 
-	reviewer_activity 
+	reviewer_activity
 as(
 	select
 		patch,
@@ -301,7 +301,8 @@ as(
 			left join (
 				select
 					a.*,
-					b.positivity
+					b.positivity,
+					rank() over (partition by a.id, a.branch, a.project order by a.r_grantedon) as r_rank
 				from
 					approval a
 				left join
@@ -309,6 +310,8 @@ as(
 					on a.id || '|' || a.branch || '|' || a.project = b.patch
 				where
 					b.positivity is not null
+					and lower(a.r_type) like 'code-review'
+					and (a.r_value > 1 or a.r_value < -1)
 			) b
 				on 
 					b.r_email = a.r_email
@@ -316,8 +319,7 @@ as(
 			where
 				lower(a.r_type) like 'code-review'
 				and (a.r_value > 1 or a.r_value < -1)
-				and lower(b.r_type) like 'code-review'
-				and (b.r_value > 1 or b.r_value < -1)
+				and (b.r_rank = 1 or b.r_rank = 2)
 			group by
 				a.id,
 				a.branch,
@@ -336,6 +338,30 @@ as(
 	/*order by
 		patch*/
 );
+
+-- Count total reviewer activity
+select
+  r_email,
+  max(r_activity) as max_r_activity
+from (
+  select
+    r1_email as r_email,
+    r1_activity as r_activity
+  from
+    reviewer_activity
+  where
+    r1_email is not null
+  union all
+  select
+    r2_email,
+    r2_activity
+  from
+    reviewer_activity
+  where
+    r2_email is not null
+)
+group by
+  r_email
 
 
 -- Load the data to pipe delimited file, then change the patch header to ID, BRANCH, and PROJECT
