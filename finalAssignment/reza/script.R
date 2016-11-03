@@ -35,6 +35,10 @@ filter_alldata = alldata[,c("ID","BRANCH","PROJECT","CREATEDON","TIMEINSECOND","
                      "SUBMITTED_PATCHES","ACCEPTED_PATCHES",
                      "queue_r1", "queue_r2"),]
 
+# filter on createdon = 1 Jan 2015, 00:00:00 until 30 June 2016, 23:59:59
+# on unix timestamp : 1420070400 < createdon < 1467331199
+filter_alldata = filter_alldata[filter_alldata$CREATEDON > 1420070400 & filter_alldata$CREATEDON < 1467331199, ]
+
 # filter preprocessing
 # filter positivity, take only +1 and -1
 filter_alldata = filter_alldata[!is.na(filter_alldata$POSITIVITY),]
@@ -43,22 +47,22 @@ filter_alldata = filter_alldata[!is.na(filter_alldata$POSITIVITY),]
 filter_alldata = filter_alldata[filter_alldata$submitter_org != "N/A" & filter_alldata$TIMEINSECOND>= 0 & filter_alldata$SIZE> 0,]
 filter_alldata = filter_alldata[!is.na(filter_alldata$submitter_org),]
 
-# slowest patch
+# filter review that's too fast, because it was reviewed by themself
+filter_alldata = filter_alldata[filter_alldata$submitter_email != filter_alldata$R1_email,]
+
+# slowest patch, remove the slowest 5%
 filter_alldata$MINUTES <- as.numeric(filter_alldata$TIMEINSECOND/60)
 filter_alldata$DAYS <- as.numeric(filter_alldata$MINUTES/60/24)
-filter_alldata = filter_alldata[filter_alldata$MINUTES < quantile(filter_alldata$MINUTES, 0.95),]
+filter_alldata_slowest = filter_alldata[filter_alldata$MINUTES < quantile(filter_alldata$MINUTES, 0.95),]
 
 # reviewer lookup
 #list_reviewer <- read.csv("totalReviewerActivity.csv", header = TRUE, sep='|')
 #least_reviewer = list_reviewer[list_reviewer$MAX_R_ACTIVITY < quantile(list_reviewer$MAX_R_ACTIVITY,0.05),]
-#filter_alldata = filter_alldata[!(filter_alldata$R1_EMAIL_ACTIVITY %in% least_reviewer$R_EMAIL | filter_alldata$R2_EMAIL_ACTIVITY %in% least_reviewer$R_EMAIL),]
-
-# filter review that's too fast, because it was reviewed by themself
-filter_alldata = filter_alldata[filter_alldata$submitter_email != filter_alldata$R1_email,]
+#filter_alldata = filter_alldata[!(filter_alldata$R1_EMAIL %in% least_reviewer$R_EMAIL | filter_alldata$R2_EMAIL %in% least_reviewer$R_EMAIL),]
 
 # filter on createdon = 1 Jan 2015, 00:00:00 until 30 June 2016, 23:59:59
 # on unix timestamp : 1420070400 < createdon < 1467331199
-filter_alldata = filter_alldata[filter_alldata$CREATEDON > 1420070400 & filter_alldata$CREATEDON < 1467331199, ]
+#filter_alldata = filter_alldata[filter_alldata$CREATEDON > 1420070400 & filter_alldata$CREATEDON < 1467331199, ]
 
 # filter on least active reviewer
 filter_dataR1 = filter_alldata[,c("ID","BRANCH","PROJECT","CREATEDON","TIMEINSECOND","POSITIVITY",
@@ -76,9 +80,33 @@ total <- aggregate(cbind(count = email) ~ email,
                    data=filter_dataR,
                    FUN = function(x){NROW(x)})
 list_reviewer <- total[which(total$email!="N/A"),]
-least_reviewer = list_reviewer[list_reviewer$count < quantile(list_reviewer$count,0.05),]
 
-filter_alldata = filter_alldata[!(filter_alldata$R1_email %in% least_reviewer$email | filter_alldata$R2_email %in% least_reviewer$email),]
+list_reviewer <- list_reviewer[order(-list_reviewer$count),]
+
+
+# calculate compound sum for each row
+for (row in 1:nrow(list_reviewer)) { 
+  if(row == 1)
+  {
+    list_reviewer$sums[row] = list_reviewer$count[row]
+  }
+  else
+  {
+    list_reviewer$sums[row] = list_reviewer$sum[row-1] + list_reviewer$count[row]
+  }
+}
+
+threshold = 95/100*sum(list_reviewer$count)
+least_reviewer <- list_reviewer[which(list_reviewer$sums>threshold),]
+
+filter_alldata_reviewer = filter_alldata[!(filter_alldata$R1_email %in% least_reviewer$email | filter_alldata$R2_email %in% least_reviewer$email),]
+
+# merge filter_alldata with filter_alldata_slowest and filter_alldata_reviewer
+filter_alldata <- merge(x = filter_alldata, y = filter_alldata_slowest, by = c("ID", "BRANCH", "PROJECT"))
+filter_alldata <- merge(x = filter_alldata, y = filter_alldata_reviewer, by = c("ID", "BRANCH", "PROJECT"))
+
+filter_alldata$POSITIVITY <- ifelse(filter_alldata$POSITIVITY == -1,0,1)
+
 
 ###########
 #REVIEWER ACTIVITY
@@ -215,10 +243,12 @@ boxplot(A$DAYS,B$DAYS,C$DAYS,D$DAYS)
 ###########
 
 conflict <- read.csv("conflict.csv", header=TRUE, sep="|",stringsAsFactors=FALSE)
-cfilter <- merge(x = conflict, y = filter_alldata, by = c("ID", "BRANCH", "PROJECT"), all.x = TRUE)
+# merge with vuvu, because vuvu has a new organization information
+cfilter <- merge(x = conflict, y = vuvu, by = c("ID", "BRANCH", "PROJECT"), all.x = TRUE)
 cfilter = cfilter[!is.na(cfilter$POSITIVITY),]
 
-cfilter = cfilter[,c("ID","BRANCH","PROJECT","CONFLICT","POSITIVITY","DAYS","R1_org","R2_org","submitter_org")]
+# now determine the number of Y and N in all patchsets
+cfilter = cfilter[,c("ID","BRANCH","PROJECT","CONFLICT","POSITIVITY","DAYS","new_org","new_R1_org","new_R2_org")]
 # create a flag for positivity
 cfilter$POS <- ifelse(cfilter$POSITIVITY == 1,"r+","r-")
 cfilter$POS <- as.factor(cfilter$POS)
@@ -241,7 +271,6 @@ summary(cfilter_cn)
 
 # Boxplot
 boxplot(cfilter_cy$DAYS, cfilter_cn$DAYS,
-        col=c("red","green"), 
         names=c("Yes", "No"), 
         xlab="Occurence of conflict",
         ylab="Days",
@@ -294,6 +323,29 @@ ratio_cy_gt3 = 6/269
 ####### 
 # CONFLICT ORGANIZATION
 #######
+
+# let's take a look in deep
+# cfilter_cy
+# kruskal test on submitter org
+
+kruskal.test(DAYS~new_org,data=cfilter_cy)
+pairwise.wilcox.test(as.numeric(cfilter_cy$DAYS), cfilter_cy$new_org, p.adj="bonferroni", exact=F)
+
+# statistically significant!
+# zoom in to big 4 companies : IBM,RH,HPE,Mirantis
+cs_group = c("IBM","Red Hat","HPE","Mirantis")
+cs_vuvu = vuvu[which(vuvu$new_org %in% cs_group),]
+
+# again, KW and MWW
+kruskal.test(DAYS~new_org,data=cs_vuvu)
+pairwise.wilcox.test(as.numeric(cs_vuvu$DAYS), cs_vuvu$new_org, p.adj="bonferroni", exact=F)
+
+# summary
+
+
+
+
+
 
 ## is there any difference between patches with internal or external organization conflict
 summary(cfilter_cy[which((cfilter_cy$submitter_org==cfilter_cy$R1_org & 
@@ -364,8 +416,6 @@ boxplot(cy_i$DAYS, cy_h$DAYS, cy_r$DAYS, cy_m$DAYS,
         ylab="Days",
         outline=FALSE)
 
-
-
 # divide by 4 group by percentage of conflict
 cfilter$group <- cut(cfilter$CP, 
                      breaks = c(-Inf, 0.25, 0.5, 0.75, Inf),
@@ -409,10 +459,8 @@ cfilter$CONFLICT_FLAG <- as.factor(cfilter$CONFLICT_FLAG)
 cfilter$groupCY <- as.factor(cfilter$groupCY)
 kruskal.test(DAYS~groupCY,data=cfilter)
 
-
 pairwise.wilcox.test(as.numeric(cfilter$MINUTES), cfilter$group, p.adj="bonferroni", exact=F)
 pairwise.wilcox.test(as.numeric(cfilter$DAYS), cfilter$groupCY, p.adj="bonferroni", exact=F)
-
 
 #summary
 cfilter$MINUTES <- as.numeric(cfilter$MINUTES)
@@ -456,28 +504,34 @@ boxplot(y1$DAYS, y2$DAYS, y3$DAYS, y4$DAYS, y5$DAYS ,
 ###########################################
 
 # create component vs time data frame
-ct <- filter_alldata[,c("PROJECT","MINUTES","POSITIVITY"),]
+ct <- filter_alldata[,c("PROJECT","DAYS","POSITIVITY"),]
 ct$POS <- ifelse(ct$POSITIVITY == 1,"r+","r-")
-ct$MINUTES <- as.factor(ct$MINUTES)
+ct$DAYS <- as.numeric(ct$DAYS)
 ct$PROJECT <- as.factor(ct$PROJECT)
 
 #KW
-kruskal.test(MINUTES~PROJECT, data=ct)
+kruskal.test(DAYS~PROJECT, data=ct)
 
 #MWW
 library(reshape)
 library(reshape2)
-mimi = pairwise.wilcox.test(as.numeric(ct$MINUTES), ct$PROJECT, p.adj="bonferroni", exact=F)
-melt(mimi[[3]])
+pairwise.wilcox.test(as.numeric(ct$DAYS), ct$PROJECT, p.adj="bonferroni", exact=F)
+#melt(mimi[[3]])
 #convert minutes to factor again
-ct$MINUTES <- as.numeric(ct$MINUTES)
 ct$POS <- as.factor(ct$POS)
 
-# cases : <0.05, neutron-cinder, nova-cinder, keystone-glance, neutron-glance, nova-glance, 
-#               nova-keystone, nova-neutron, swift-nova
+# cases : <0.05, neutron-cinder, nova-cinder, keystone-glance, neutron-glance, 
+#                 nova-keystone, nova-neutron, nova-swift
 # we see here that nova occurs in all of the significant cases
 # what does it mean?
 
+#transform positivity value
+ct$POSITIVITY <- ifelse(ct$POSITIVITY == -1,0,1)
+
+summary(ct[which(ct$PROJECT == "openstack/nova"),])
+summary(ct[which(ct$PROJECT == "openstack/neutron"),])
+summary(ct[which(ct$PROJECT == "openstack/cinder"),])
+summary(ct[which(ct$PROJECT == "openstack/keystone"),])
 summary(ct[which(ct$PROJECT == "openstack/swift"),])
 summary(ct[which(ct$PROJECT == "openstack/glance"),])
 
@@ -487,10 +541,10 @@ ct_rp <- ct[ which(ct$POS=='r+'), ]
 ct_rm <- ct[ which(ct$POS=='r-'), ]
 
 #KW for r+
-kruskal.test(MINUTES~PROJECT, data=ct_rm)
+kruskal.test(DAYS~PROJECT, data=ct_rp)
 
 #KW for r-
-kruskal.test(MINUTES~PROJECT, data=ct_rp)
+kruskal.test(DAYS~PROJECT, data=ct_rm)
 
 #stat sig in both cases for r+ and r- group
 #mww for r+
