@@ -1079,12 +1079,13 @@ summary(tsb[which(tsb$group=='D'),])
 #############################
 
 trv<- read.csv("time_reviewer.csv", header = TRUE, sep=',')
+trv<- read.csv("mlr_time.csv", header = TRUE, sep=',')
 
 #splitting submitters into 4 groups
-trv$group <- as.factor(cut(trv$patches, quantile(trv$patches,(0:4)/4), include.lowest=TRUE, labels=LETTERS[1:4]))
+trv$groupA <- as.factor(cut(trv$r_exp, quantile(trv$r_exp,(0:4)/4), include.lowest=TRUE, labels=LETTERS[1:4]))
 
 #KW
-kruskal.test(time~group, data=trv)
+kruskal.test(time~groupA, data=trv)
 
 	Kruskal-Wallis rank sum test
 
@@ -1094,7 +1095,7 @@ Kruskal-Wallis chi-squared = 40.5432, df = 3, p-value = 8.173e-09
 #Result: there is stat sign
 
 #MWW
-pairwise.wilcox.test(trv$time, trv$group, p.adj="bonferroni", exact=F)
+pairwise.wilcox.test(trv$time, trv$groupA, p.adj="bonferroni", exact=F)
 
 	Pairwise comparisons using Wilcoxon rank sum test 
 
