@@ -19,7 +19,7 @@ patchB <- filter_alldata[which(filter_alldata$group=='B'),]
 patchC <- filter_alldata[which(filter_alldata$group=='C'),]
 patchD <- filter_alldata[which(filter_alldata$group=='D'),]
 
-boxplot(filter_alldata$DAYS ~ filter_alldata$group, ylab="Acceptance time (days)", col=c("red","green", "blue", "yellow"), names=c("A", "B", "C", "D"), outline=FALSE)
+boxplot(filter_alldata$DAYS ~ filter_alldata$group, ylab="Review time (days)", names=c("A", "B", "C", "D"), outline=FALSE)
 
 # Mean and Median values for each group
 summary(patchA$DAYS)
@@ -41,6 +41,7 @@ accepted$group <- as.factor(cut(accepted$SIZE,quantile(accepted$SIZE,(0:4)/4), i
 rejected$group <- as.factor(cut(rejected$SIZE,quantile(rejected$SIZE,(0:4)/4), include.lowest=TRUE, labels=LETTERS[1:4]))
 
 boxplot(accepted$DAYS ~ accepted$group, ylab="Acceptance time (days)", col=c("red","green", "blue", "yellow"), names=c("A", "B", "C", "D"), outline=FALSE)
+boxplot(rejected$DAYS ~ rejected$group, ylab="Reject time (days)", col=c("red","green", "blue", "yellow"), names=c("A", "B", "C", "D"), outline=FALSE)
 
 # KW for accepted
 kruskal.test(TIMEINSECOND~group, data=accepted)

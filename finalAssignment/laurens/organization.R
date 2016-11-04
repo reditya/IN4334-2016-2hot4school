@@ -75,7 +75,7 @@ pos_A <- nrow(patchA[which(patchA$POSITIVITY == 1),]) / nrow(patchA)
 pos_B <- nrow(patchB[which(patchB$POSITIVITY == 1),]) / nrow(patchB)
 pos_C <- nrow(patchC[which(patchC$POSITIVITY == 1),]) / nrow(patchC)
 
-boxplot(filter_alldata$DAYS ~ filter_alldata$group, ylab="Review time (days)", col=c("red","green", "blue"), names=c("A", "B", "C"), outline=FALSE)
+boxplot(filter_alldata$DAYS ~ filter_alldata$group, ylab="Review time (days)", names=c("A", "B", "C"), outline=FALSE)
 
 # KW test groups
 kruskal.test(DAYS~group,data=filter_alldata)
