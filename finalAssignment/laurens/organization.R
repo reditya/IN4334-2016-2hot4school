@@ -106,6 +106,14 @@ kruskal.test(POSITIVITY~group,data=IBM)
 pairwise.wilcox.test(IBM$DAYS, IBM$group, p.adj="bonferroni", exact=F)
 pairwise.wilcox.test(IBM$POSITIVITY, IBM$group, p.adj="bonferroni", exact=F)
 
+patchAIBM <- IBM[which(IBM$group=="A"),]
+patchBIBM <- IBM[which(IBM$group=="B"),]
+patchCIBM <- IBM[which(IBM$group=="C"),]
+
+posAIBM <- nrow(patchAIBM[which(patchAIBM$POSITIVITY==1),]) / nrow(patchAIBM)
+posBIBM <- nrow(patchBIBM[which(patchBIBM$POSITIVITY==1),]) / nrow(patchBIBM)
+posCIBM <- nrow(patchCIBM[which(patchCIBM$POSITIVITY==1),]) / nrow(patchCIBM)
+
 # HPE
 HPE <- filter_alldata[which(filter_alldata$submitter_org == "HPE"),]
 # create groups for HPE
@@ -124,3 +132,38 @@ kruskal.test(POSITIVITY~group,data=HPE)
 # Pairwise test on HPE
 pairwise.wilcox.test(HPE$DAYS, HPE$group, p.adj="bonferroni", exact=F)
 pairwise.wilcox.test(HPE$POSITIVITY, HPE$group, p.adj="bonferroni", exact=F)
+
+patchAHPE <- HPE[which(HPE$group=="A"),]
+patchBHPE <- HPE[which(HPE$group=="B"),]
+patchCHPE <- HPE[which(HPE$group=="C"),]
+
+posAHPE <- nrow(patchAHPE[which(patchAHPE$POSITIVITY==1),]) / nrow(patchAHPE)
+posBHPE <- nrow(patchBHPE[which(patchBHPE$POSITIVITY==1),]) / nrow(patchBHPE)
+posCHPE <- nrow(patchCHPE[which(patchCHPE$POSITIVITY==1),]) / nrow(patchCHPE)
+
+# Red Hat
+redhat <- filter_alldata[which(filter_alldata$submitter_org == "Red Hat"),]
+# create groups for Red Hat
+for (row in 1:nrow(redhat)) { 
+  redhat$group[row] <- 
+    createRPGroup(redhat$R1_org[row],
+                  redhat$R2_org[row],
+                  redhat$submitter_org[row])
+}
+redhat$group <- as.factor(redhat$group)
+
+# KW test on Red Hat
+kruskal.test(DAYS~group,data=redhat)
+kruskal.test(POSITIVITY~group,data=redhat)
+
+# Pairwise test on Red Hat
+pairwise.wilcox.test(redhat$DAYS, redhat$group, p.adj="bonferroni", exact=F)
+pairwise.wilcox.test(redhat$POSITIVITY, redhat$group, p.adj="bonferroni", exact=F)
+
+patchAredhat <- redhat[which(redhat$group=="A"),]
+patchBredhat <- redhat[which(redhat$group=="B"),]
+patchCredhat <- redhat[which(redhat$group=="C"),]
+
+posAredhat <- nrow(patchAredhat[which(patchAredhat$POSITIVITY==1),]) / nrow(patchAredhat)
+posBredhat <- nrow(patchBredhat[which(patchBredhat$POSITIVITY==1),]) / nrow(patchBredhat)
+posCredhat <- nrow(patchCredhat[which(patchCredhat$POSITIVITY==1),]) / nrow(patchCredhat)
